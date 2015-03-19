@@ -11,7 +11,7 @@ import pygame
 from pygame.locals import *
 
 
-FPS = 60
+FPS = 90
 ANIMATION_SPEED = 0.18  # pixels per millisecond
 WIN_WIDTH = 284 * 2     # BG image size: 284x512 px; tiled twice
 WIN_HEIGHT = 512
@@ -48,6 +48,10 @@ class Bird(pygame.sprite.Sprite):
     CLIMB_SPEED = 0.3
     CLIMB_DURATION = 333.3
 
+    SPEED = -0.40
+    ACC = -SPEED/400 # climb duration = 400ms
+    # PipePair.PIECE_HEIGHT
+
     def __init__(self, x, y, msec_to_climb, images):
         """Initialise a new Bird instance.
 
@@ -69,6 +73,8 @@ class Bird(pygame.sprite.Sprite):
         self._img_wingup, self._img_wingdown = images
         self._mask_wingup = pygame.mask.from_surface(self._img_wingup)
         self._mask_wingdown = pygame.mask.from_surface(self._img_wingdown)
+        self._start_time = pygame.time.get_ticks() + Bird.SPEED/Bird.ACC
+        self._start_height = WIN_HEIGHT/2.0
 
     def update(self, delta_frames=1):
         """Update the bird's position.
@@ -85,13 +91,17 @@ class Bird(pygame.sprite.Sprite):
         delta_frames: The number of frames elapsed since this method was
             last called.
         """
-        if self.msec_to_climb > 0:
-            frac_climb_done = 1 - self.msec_to_climb/Bird.CLIMB_DURATION
-            self.y -= (Bird.CLIMB_SPEED * frames_to_msec(delta_frames) *
-                       (1 - math.cos(frac_climb_done * math.pi)))
-            self.msec_to_climb -= frames_to_msec(delta_frames)
-        else:
-            self.y += Bird.SINK_SPEED * frames_to_msec(delta_frames)
+        t = pygame.time.get_ticks() - self._start_time #frames_to_msec(delta_frames)
+        # S = vt + 1/2*vt^2
+        self.y = self._start_height + Bird.SPEED*t + 0.5*Bird.ACC*t*t;
+        # return
+        # if self.msec_to_climb > 0:
+        #     frac_climb_done = 1 - self.msec_to_climb/Bird.CLIMB_DURATION
+        #     self.y -= (Bird.CLIMB_SPEED * frames_to_msec(delta_frames) *
+        #                (1 - math.cos(frac_climb_done * math.pi)))
+        #     self.msec_to_climb -= frames_to_msec(delta_frames)
+        # else:
+        #     self.y += Bird.SINK_SPEED * frames_to_msec(delta_frames)
 
     @property
     def image(self):
@@ -154,7 +164,7 @@ class PipePair(pygame.sprite.Sprite):
     """
 
     WIDTH = 80
-    PIECE_HEIGHT = 32
+    PIECE_HEIGHT = 32+10
     ADD_INTERVAL = 3000
 
     def __init__(self, pipe_end_img, pipe_body_img):
@@ -347,6 +357,8 @@ def main():
             elif e.type == MOUSEBUTTONUP or (e.type == KEYUP and
                     e.key in (K_UP, K_RETURN, K_SPACE)):
                 bird.msec_to_climb = Bird.CLIMB_DURATION
+                bird._start_time = pygame.time.get_ticks()
+                bird._start_height = bird.y
 
         if paused:
             continue  # don't draw anything
